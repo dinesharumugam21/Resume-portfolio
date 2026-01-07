@@ -1,9 +1,55 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Mail, Phone, MapPin, Github, Linkedin, FileText, Send } from "lucide-react";
+import { Mail, Phone, MapPin, Github, Linkedin, Send, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 
 export default function Contact() {
+    const [formData, setFormData] = useState({
+        name: "",
+        email: "",
+        message: "",
+        company: "" // Honeypot field
+    });
+
+    const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+    const [errorMessage, setErrorMessage] = useState("");
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setStatus("loading");
+        setErrorMessage("");
+
+        try {
+            const res = await fetch("/api/contact", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(formData),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || "Something went wrong.");
+            }
+
+            setStatus("success");
+            setFormData({ name: "", email: "", message: "", company: "" });
+
+            // Reset success message after 5 seconds
+            setTimeout(() => setStatus("idle"), 5000);
+
+        } catch (error: any) {
+            setStatus("error");
+            setErrorMessage(error.message || "Failed to send message.");
+        }
+    };
+
     return (
         <section id="contact" className="relative w-full py-20 px-6 min-h-screen flex flex-col items-center justify-center bg-[#0A1929] overflow-hidden">
 
@@ -70,26 +116,91 @@ export default function Contact() {
                     initial={{ opacity: 0, x: 50 }}
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
-                    className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-2xl"
+                    className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-2xl relative"
                 >
                     <h3 className="text-2xl font-bold text-white mb-6">Send a Message</h3>
-                    <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-2">Your Name</label>
-                            <input type="text" className="w-full bg-[#0A1929] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-400 transition-colors placeholder:text-gray-600" placeholder="John Doe" />
-                        </div>
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-2">Your Email</label>
-                            <input type="email" className="w-full bg-[#0A1929] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-400 transition-colors placeholder:text-gray-600" placeholder="john@example.com" />
-                        </div>
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-2">Message</label>
-                            <textarea className="w-full bg-[#0A1929] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-400 transition-colors placeholder:text-gray-600 min-h-[150px]" placeholder="Hi Dinesh, I'd like to talk about..." />
+
+                    <form className="space-y-6" onSubmit={handleSubmit}>
+                        {/* Honeypot field (hidden) */}
+                        <div className="hidden">
+                            <input
+                                type="text"
+                                name="company"
+                                value={formData.company}
+                                onChange={handleChange}
+                                tabIndex={-1}
+                                autoComplete="off"
+                            />
                         </div>
 
-                        <button className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold py-4 rounded-lg hover:brightness-110 transition-all shadow-[0_0_20px_rgba(66,133,244,0.3)] flex items-center justify-center gap-2">
-                            <Send size={20} /> Send Message
+                        <div>
+                            <label htmlFor="name" className="block text-sm text-gray-400 mb-2">Your Name</label>
+                            <input
+                                id="name"
+                                type="text"
+                                name="name"
+                                value={formData.name}
+                                onChange={handleChange}
+                                required
+                                className="w-full bg-[#0A1929] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-400 transition-colors placeholder:text-gray-600"
+                                placeholder="John Doe"
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="email" className="block text-sm text-gray-400 mb-2">Your Email</label>
+                            <input
+                                id="email"
+                                type="email"
+                                name="email"
+                                value={formData.email}
+                                onChange={handleChange}
+                                required
+                                className="w-full bg-[#0A1929] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-400 transition-colors placeholder:text-gray-600"
+                                placeholder="john@example.com"
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="message" className="block text-sm text-gray-400 mb-2">Message</label>
+                            <textarea
+                                id="message"
+                                name="message"
+                                value={formData.message}
+                                onChange={handleChange}
+                                required
+                                className="w-full bg-[#0A1929] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-400 transition-colors placeholder:text-gray-600 min-h-[150px]"
+                                placeholder="Hi Dinesh, I'd like to talk about..."
+                            />
+                        </div>
+
+                        <button
+                            disabled={status === 'loading' || status === 'success'}
+                            type="submit"
+                            className={`w-full font-semibold py-4 rounded-lg transition-all shadow-[0_0_20px_rgba(66,133,244,0.3)] flex items-center justify-center gap-2
+                                ${status === 'success' ? 'bg-green-600 text-white cursor-default' : 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:brightness-110'}
+                                ${status === 'loading' ? 'opacity-80 cursor-wait' : ''}
+                            `}
+                        >
+                            {status === 'loading' && <Loader2 className="animate-spin" size={20} />}
+                            {status === 'success' && <CheckCircle size={20} />}
+                            {status === 'idle' && <Send size={20} />}
+                            {status === 'error' && <Send size={20} />}
+
+                            {status === 'loading' ? 'Sending...' :
+                                status === 'success' ? 'Message Sent!' : 'Send Message'}
                         </button>
+
+                        {/* Status Messages */}
+                        {status === 'error' && (
+                            <div className="flex items-center gap-2 text-red-400 text-sm mt-2 animate-pulse">
+                                <AlertCircle size={16} />
+                                <span>{errorMessage}</span>
+                            </div>
+                        )}
+                        {status === 'success' && (
+                            <p className="text-green-400 text-sm mt-2 text-center">
+                                Thanks for reaching out! I'll get back to you soon.
+                            </p>
+                        )}
                     </form>
                 </motion.div>
 
