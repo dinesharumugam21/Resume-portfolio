@@ -5,41 +5,38 @@ import { motion } from "framer-motion";
 import { Mail, Phone, MapPin, Github, Linkedin, Send, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 
 export default function Contact() {
-    const [formData, setFormData] = useState({
-        name: "",
-        email: "",
-        message: "",
-        company: "" // Honeypot field
-    });
-
     const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
     const [errorMessage, setErrorMessage] = useState("");
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
+    async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setStatus("loading");
         setErrorMessage("");
+
+        const form = e.currentTarget;
+        const formData = new FormData(form);
+
+        const payload = {
+            name: formData.get("name"),
+            email: formData.get("email"),
+            message: formData.get("message"),
+        };
 
         try {
             const res = await fetch("/api/contact", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(payload),
             });
 
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data.error || "Something went wrong.");
+                throw new Error(data.error || "Failed to send message.");
             }
 
             setStatus("success");
-            setFormData({ name: "", email: "", message: "", company: "" });
+            form.reset();
 
             // Reset success message after 5 seconds
             setTimeout(() => setStatus("idle"), 5000);
@@ -48,7 +45,7 @@ export default function Contact() {
             setStatus("error");
             setErrorMessage(error.message || "Failed to send message.");
         }
-    };
+    }
 
     return (
         <section id="contact" className="relative w-full py-20 px-6 min-h-screen flex flex-col items-center justify-center bg-[#0A1929] overflow-hidden">
@@ -120,27 +117,13 @@ export default function Contact() {
                 >
                     <h3 className="text-2xl font-bold text-white mb-6">Send a Message</h3>
 
-                    <form className="space-y-6" onSubmit={handleSubmit}>
-                        {/* Honeypot field (hidden) */}
-                        <div className="hidden">
-                            <input
-                                type="text"
-                                name="company"
-                                value={formData.company}
-                                onChange={handleChange}
-                                tabIndex={-1}
-                                autoComplete="off"
-                            />
-                        </div>
-
+                    <form className="space-y-6" onSubmit={onSubmit}>
                         <div>
                             <label htmlFor="name" className="block text-sm text-gray-400 mb-2">Your Name</label>
                             <input
                                 id="name"
                                 type="text"
                                 name="name"
-                                value={formData.name}
-                                onChange={handleChange}
                                 required
                                 className="w-full bg-[#0A1929] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-400 transition-colors placeholder:text-gray-600"
                                 placeholder="John Doe"
@@ -152,8 +135,6 @@ export default function Contact() {
                                 id="email"
                                 type="email"
                                 name="email"
-                                value={formData.email}
-                                onChange={handleChange}
                                 required
                                 className="w-full bg-[#0A1929] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-400 transition-colors placeholder:text-gray-600"
                                 placeholder="john@example.com"
@@ -164,8 +145,6 @@ export default function Contact() {
                             <textarea
                                 id="message"
                                 name="message"
-                                value={formData.message}
-                                onChange={handleChange}
                                 required
                                 className="w-full bg-[#0A1929] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-400 transition-colors placeholder:text-gray-600 min-h-[150px]"
                                 placeholder="Hi Dinesh, I'd like to talk about..."
